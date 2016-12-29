@@ -2,7 +2,6 @@ import urllib.request
 import re
 import time
 import datetime
-import sys
 from datetime import datetime, timedelta
 
 # assumptions (if any of these are false behavior is undefined)
@@ -49,55 +48,58 @@ pst_timedifference = -8
 currentyear = datetime.utcnow().year
 currenttimepst = datetime.utcnow() + timedelta(hours=pst_timedifference) + timedelta(hours=add_hours_for_testing)
 
+linkPart = []
 mainPage = ("http://maplestory.nexon.net/news")
 try:
-    htmltext = urllib.request.urlopen(mainPage).read().decode('utf-8')
-    regex = '<a href="/news/(.+?)/2x-exp-drop-event-(.+?)">' #Gets the link with the event page
-    linkPart = re.findall(re.compile(regex),htmltext)[0]
+    try:
+        htmltext = urllib.request.urlopen(mainPage).read().decode('utf-8')
+        regex = '<a href="/news/(.+?)/2x-exp-drop-event-(.+?)">' #Gets the link with the event page
+        linkPart = re.findall(re.compile(regex),htmltext)[0]
+    except:
+        print ("The next 2x event is not announced yet in a supported format.")
+    eventpageid = linkPart[0]
+    monthsanddays = re.findall(re.compile('[0-9]{1,2}'),linkPart[1])
+    
+    eventPage = "http://maplestory.nexon.net/news/" + eventpageid
+    try:
+        htmltext = urllib.request.urlopen(eventPage).read().decode('utf-8')
+        regex = '<strong>PST:(.+?)</strong>' #Gets the link with the event data
+        timeList = re.findall(re.compile(regex),htmltext)
+        
+        startTimes = []
+        endTimes = []
+        
+        for i, t in enumerate(timeList):
+            temp = re.sub(' ', '', t)
+            newList = re.findall(re.compile("[0-9]{1,2}:[0-9]{2}[AP]M"),temp)
+        
+            for j, n in enumerate(newList):
+                eventdatetime = datetime(currentyear, int(monthsanddays[0]), int(monthsanddays[1])).replace(hour=timedict[n])
+                
+                if eventdatetime - currenttimepst > timedelta(seconds=0):
+                    if j % 2 == 0:
+                        startTimes.append(eventdatetime)
+                        #print(eventdatetime - currenttimepst)
+                    else :
+                        endTimes.append(eventdatetime)
+        
+            monthsanddays.pop(0)
+            monthsanddays.pop(0)
+        
+        #print(currenttimepst, startTimes)
+        
+        if len(endTimes) > 0:
+            nextEndtime = endTimes[0]
+            if len(startTimes) == 0 or startTimes[0] - nextEndtime > timedelta(seconds=0):
+                timeSpan = nextEndtime.replace(microsecond=0) - currenttimepst.replace(microsecond=0)
+                print("The currently running 2x event ends at " + nextEndtime.strftime("%b %d %Y %H:%M:%S") + " PST (in " + str(timeSpan) + ")")
+        
+        if len(startTimes) > 0:
+            nextStartTime = startTimes[0]
+        
+            timeSpan = nextStartTime.replace(microsecond=0) - currenttimepst.replace(microsecond=0)
+            print("The next 2x event starts at " + nextStartTime.strftime("%b %d %Y %H:%M:%S") + " PST (in " + str(timeSpan) + ")")
+    except:
+        print ("Either nexon is inconsistent at announcing their 2x exp events, or this plugin is coded by monkeys. We don't know.")
 except:
-    print ("The next 2x event is not yet announced in a supported format.")
-    sys.exit()
-eventpageid = linkPart[0]
-monthsanddays = re.findall(re.compile('[0-9]{1,2}'),linkPart[1])
-
-eventPage = "http://maplestory.nexon.net/news/" + eventpageid
-try:
-    htmltext = urllib.request.urlopen(eventPage).read().decode('utf-8')
-    regex = '<strong>PST:(.+?)</strong>' #Gets the link with the event data
-    timeList = re.findall(re.compile(regex),htmltext)
-    
-    startTimes = []
-    endTimes = []
-    
-    for i, t in enumerate(timeList):
-        temp = re.sub(' ', '', t)
-        newList = re.findall(re.compile("[0-9]{1,2}:[0-9]{2}[AP]M"),temp)
-    
-        for j, n in enumerate(newList):
-            eventdatetime = datetime(currentyear, int(monthsanddays[0]), int(monthsanddays[1])).replace(hour=timedict[n])
-            
-            if eventdatetime - currenttimepst > timedelta(seconds=0):
-                if j % 2 == 0:
-                    startTimes.append(eventdatetime)
-                    #print(eventdatetime - currenttimepst)
-                else :
-                    endTimes.append(eventdatetime)
-    
-        monthsanddays.pop(0)
-        monthsanddays.pop(0)
-    
-    #print(currenttimepst, startTimes)
-    
-    if len(endTimes) > 0:
-        nextEndtime = endTimes[0]
-        if len(startTimes) == 0 or startTimes[0] - nextEndtime > timedelta(seconds=0):
-            timeSpan = nextEndtime.replace(microsecond=0) - currenttimepst.replace(microsecond=0)
-            print("The currently running 2x event ends at " + nextEndtime.strftime("%b %d %Y %H:%M:%S") + " PST (in " + str(timeSpan) + ")")
-    
-    if len(startTimes) > 0:
-        nextStartTime = startTimes[0]
-    
-        timeSpan = nextStartTime.replace(microsecond=0) - currenttimepst.replace(microsecond=0)
-        print("The next 2x event starts at " + nextStartTime.strftime("%b %d %Y %H:%M:%S") + " PST (in " + str(timeSpan) + ")")
-except:
-    print ("Either nexon is inconsistent at announcing their 2x exp events, or this plugin is coded by monkeys. We don't know.")
+    e = 5 #Try requires an except, and except requires one line.
